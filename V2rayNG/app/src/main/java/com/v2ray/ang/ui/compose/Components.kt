@@ -4,14 +4,20 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
@@ -19,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material3.Checkbox
@@ -41,9 +48,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -60,6 +70,63 @@ import coil3.request.ImageRequest
 import com.v2ray.ang.R
 import com.v2ray.ang.util.AppIconFetcher
 import sh.calvin.reorderable.ReorderableCollectionItemScope
+
+// ---------------------------------------------------------------------------
+// Glass look building blocks (used by the screens in the next design rounds)
+// ---------------------------------------------------------------------------
+
+/** Default rounded corner for glass cards. */
+val GlassShape = RoundedCornerShape(20.dp)
+
+/** Translucent fill + thin light edge, clipped to [shape]. */
+@Composable
+fun Modifier.glass(shape: Shape = GlassShape): Modifier {
+    val dark = LocalDarkTheme.current
+    val fill = if (dark) glassFillDark else glassFillLight
+    val borderBrush = if (dark) {
+        Brush.verticalGradient(listOf(glassBorderTopDark, glassBorderBottomDark))
+    } else {
+        Brush.verticalGradient(listOf(glassBorderTopLight, glassBorderBottomLight))
+    }
+    return this
+        .clip(shape)
+        .background(fill)
+        .border(1.dp, borderBrush, shape)
+}
+
+/** A card with the glass look. Pass [onClick] to make it tappable. */
+@Composable
+fun GlassCard(
+    modifier: Modifier = Modifier,
+    shape: Shape = GlassShape,
+    onClick: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val base = modifier.glass(shape)
+    Column(
+        modifier = if (onClick != null) base.clickable(onClick = onClick) else base,
+        content = content
+    )
+}
+
+/** Full-screen navy gradient background. Wrap a whole screen with it. */
+@Composable
+fun AppBackground(
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit
+) {
+    val colors = if (LocalDarkTheme.current) backgroundGradientDark else backgroundGradientLight
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(colors)),
+        content = content
+    )
+}
+
+// ---------------------------------------------------------------------------
+// Existing components (same names and parameters as before)
+// ---------------------------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,7 +169,7 @@ fun AppTopBar(
             },
             actions = actions,
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface,
+                containerColor = MaterialTheme.colorScheme.background,
                 titleContentColor = MaterialTheme.colorScheme.onSurface,
                 navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
                 actionIconContentColor = MaterialTheme.colorScheme.onSurface
@@ -287,6 +354,7 @@ fun ReorderableListItem(
     val elevation by reorderableElevation(isDragging)
     Surface(
         modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         shadowElevation = elevation
     ) {
         Row(
@@ -310,6 +378,7 @@ fun ReorderableGridItem(
         modifier = Modifier
             .fillMaxWidth()
             .then(with(scope) { reorderableDragHandle() }),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         shadowElevation = elevation
     ) {
         content()
